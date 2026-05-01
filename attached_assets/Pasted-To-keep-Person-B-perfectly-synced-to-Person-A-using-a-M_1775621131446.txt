@@ -1,0 +1,42 @@
+To keep Person B perfectly synced to Person A using a Master-Follower (Person A as Master) approach with native WebSockets, you need a "Late Joiner" logic followed by a "Continuous Drift" logic.
+1. The Initial Sync (Person B joins)
+When Person B connects, they must immediately ask for the current state.
+Person B: Sends REQUEST_SYNC.
+Person A: Receives REQUEST_SYNC, sends back CURRENT_STATE containing { time: 42.5, sentAt: Date.now() }.
+Person B: Receives state and jumps to time + (now - sentAt).
+2. The Continuous Sync (The "Lock")
+To prevent them from drifting apart over time, Person A should broadcast a heartbeat. If you just "jump" every time, the video will stutter. Instead, use the Playback Rate trick.
+Follower Logic (Person B):
+javascript
+const SYNC_THRESHOLD = 0.15; // 150ms: ignore small jitters
+const JUMP_THRESHOLD = 2.0;  // 2s: if way off, just force a jump
+
+socket.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'HEARTBEAT') {
+        const latency = (Date.now() - msg.sentAt) / 1000;
+        const targetTime = msg.time + latency;
+        const diff = targetTime - video.currentTime;
+
+        if (Math.abs(diff) > JUMP_THRESHOLD) {
+            video.currentTime = targetTime; // Force jump for huge desync
+        } else if (Math.abs(diff) > SYNC_THRESHOLD) {
+            // Speed up or slow down slightly to "catch up" without jumping
+            video.playbackRate = diff > 0 ? 1.05 : 0.95;
+        } else {
+            video.playbackRate = 1.0; // Perfect sync
+        }
+    }
+};
+Use code with caution.
+
+3. Essential Events to Sync
+You must listen for these specific HTML5 video events on Person A and broadcast them immediately:
+onplay / onpause: Essential so they start/stop together.
+onseeking: If Person A drags the slider, Person B must jump immediately.
+onwaiting: If Person A buffers, Person B must pause so they don't get ahead. 
+Stack Overflow
+Stack Overflow
+Why they still drift (Troubleshooting)
+Background Throttling: If Person B’s tab is in the background, the browser might throttle the WebSocket or the video clock.
+Clock Jitter: Date.now() is usually fine, but network "spikes" can make your latency calculation wrong for one frame. Using a "smoothed" average of latency (over the last 5 messages) can make the syncing much smoother. 

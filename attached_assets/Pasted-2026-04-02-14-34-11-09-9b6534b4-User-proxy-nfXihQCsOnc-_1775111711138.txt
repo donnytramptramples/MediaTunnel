@@ -1,0 +1,64 @@
+2026-04-02 14:34:11.09
+9b6534b4
+User
+[proxy] nfXihQCsOnc q=360 range=bytes=0-
+2026-04-02 14:34:11.09
+9b6534b4
+User
+[proxy] nfXihQCsOnc q=360 range=bytes=0-
+2026-04-02 14:34:11.09
+9b6534b4
+User
+[ytdlp] Using client: android_vr
+2026-04-02 14:34:11.09
+9b6534b4
+User
+[ytdlp] Extracting formats for nfXihQCsOnc (attempt 1)
+2026-04-02 14:34:11.09
+9b6534b4
+User
+[proxy] nfXihQCsOnc q=360 range=bytes=0-
+2026-04-02 14:34:11.09
+9b6534b4
+User
+[ytdlp] Using client: android_vr
+2026-04-02 14:34:11.09
+9b6534b4
+User
+[ytdlp] Extracting formats for nfXihQCsOnc (attempt 1)
+2026-04-02 14:34:13.36
+9b6534b4
+User
+[proxy] Error: yt-dlp exited 1: ERROR: [youtube] nfXihQCsOnc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-
+2026-04-02 14:34:13.36
+9b6534b4
+User
+[proxy] Retrying with different client...
+2026-04-02 14:34:13.36
+9b6534b4
+User
+[ytdlp] Using client: android_vr
+2026-04-02 14:34:13.36
+9b6534b4
+User
+[ytdlp] Extracting formats for nfXihQCsOnc (attempt 1)
+2026-04-02 14:34:13.36
+9b6534b4
+User
+[proxy] nfXihQCsOnc q=360 range=bytes=0-
+2026-04-02 14:34:15.75
+9b6534b4
+User
+[proxy] Error: yt-dlp exited 1: ERROR: [youtube] nfXihQCsOnc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-
+2026-04-02 14:34:15.75
+9b6534b4
+User
+[proxy] Error: yt-dlp exited 1: ERROR: [youtube] nfXihQCsOnc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-
+2026-04-02 14:34:15.75
+9b6534b4
+User
+[proxy] Error: yt-dlp exited 1: ERROR: [youtube] nfXihQCsOnc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-
+2026-04-02 14:34:15.75
+9b6534b4
+User
+[proxy] Error: yt-dlp exited 1: ERROR: [youtube] nfXihQCsOnc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-

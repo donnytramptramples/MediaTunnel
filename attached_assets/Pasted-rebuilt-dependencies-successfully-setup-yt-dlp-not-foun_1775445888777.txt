@@ -1,0 +1,61 @@
+rebuilt dependencies successfully
+[setup] yt-dlp not found — downloading...
+
+  VITE v6.4.1  ready in 1129 ms
+
+  ➜  Local:   http://localhost:5000/
+  ➜  Network: http://172.31.71.98:5000/
+  ➜  press h + enter to show help
+[setup] yt-dlp 2026.03.17 ready
+[youtubei.js] Using provided visitor_data
+>>> [SUCCESS] YouTube API Initialised (TV_EMBEDDED)
+Server running on port 10000
+Bot bypass: cookies=false visitor_data=true po_token=false
+[feed] trending fetch failed: exit 1
+[feed] trending fetch failed: exit 1
+[shorts] source https://www.youtube.com/shorts/ failed: exit 1
+[shorts] source https://www.youtube.com/shorts/ failed: exit 1
+[shorts] Got 30 shorts from https://www.youtube.com/hashtag/shorts
+[shorts] Got 30 shorts from https://www.youtube.com/hashtag/shorts
+[proxy] QNSRurU9ON8 q=360 seek=0s range=bytes=0-
+[ytdlp] QNSRurU9ON8 attempt 1 client=tv_embedded cookies=false po_token=false
+[ytdlp] Got 33 formats for QNSRurU9ON8
+[ffmpeg] Muxing video+audio seek=0s isDownload=false
+[ffmpeg] Video: https://rr5---sn-cvh7kn6y.googlevideo.com/videoplayback?expire=1775467016&ei=qCX...
+[ffmpeg] Audio: https://rr5---sn-cvh7kn6y.googlevideo.com/videoplayback?expire=1775467016&ei=qCX...
+[ffmpeg] movflags=frag_keyframe+empty_moov+default_base_moof
+[proxy] 6pr71BzMzMw q=360 seek=0s range=bytes=0-
+[ytdlp] 6pr71BzMzMw attempt 1 client=tv_embedded cookies=false po_token=false
+[ytdlp] Got 29 formats for 6pr71BzMzMw
+[ffmpeg] Muxing video+audio seek=0s isDownload=false
+[ffmpeg] Video: https://rr3---sn-cvh7kn6l.googlevideo.com/videoplayback?expire=1775467044&ei=xCX...
+[ffmpeg] Audio: https://rr3---sn-cvh7kn6l.googlevideo.com/videoplayback?expire=1775467044&ei=xCX...
+[ffmpeg] movflags=frag_keyframe+empty_moov+default_base_moof
+[shorts] source https://www.youtube.com/shorts/ failed: exit 1
+[shorts] source https://www.youtube.com/feed/trending failed: exit 1
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[ytdlp] vxnatWAf-AA attempt 1 client=tv_embedded cookies=false po_token=false
+[ytdlp] Got 6 formats for vxnatWAf-AA
+[proxy] 9zVn1wDeyoQ q=360 seek=0s range=bytes=0-
+[ytdlp] 9zVn1wDeyoQ attempt 1 client=tv_embedded cookies=false po_token=false
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] IRYkf96Uy60 q=360 seek=0s range=bytes=0-
+[ytdlp] IRYkf96Uy60 attempt 1 client=tv_embedded cookies=false po_token=false
+[ytdlp] Got 27 formats for 9zVn1wDeyoQ
+[ffmpeg] Muxing video+audio seek=0s isDownload=false
+[ffmpeg] Video: https://rr3---sn-cvh7kn6y.googlevideo.com/videoplayback?expire=1775467059&ei=0yX...
+[ffmpeg] Audio: https://rr3---sn-cvh7kn6y.googlevideo.com/videoplayback?expire=1775467059&ei=0yX...
+[ffmpeg] movflags=frag_keyframe+empty_moov+default_base_moof
+[ytdlp] Got 27 formats for IRYkf96Uy60
+[ffmpeg] Muxing video+audio seek=0s isDownload=false
+[ffmpeg] Video: https://rr3---sn-cvh7kn6r.googlevideo.com/videoplayback?expire=1775467061&ei=1SX...
+[ffmpeg] Audio: https://rr3---sn-cvh7kn6r.googlevideo.com/videoplayback?expire=1775467061&ei=1SX...
+[ffmpeg] movflags=frag_keyframe+empty_moov+default_base_moof
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-
+[proxy] vxnatWAf-AA q=360 seek=0s range=bytes=0-

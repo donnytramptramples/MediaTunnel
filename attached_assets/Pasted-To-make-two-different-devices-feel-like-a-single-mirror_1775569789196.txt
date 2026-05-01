@@ -1,0 +1,38 @@
+To make two different devices feel like a single mirrored screen, you need to synchronize every "state" property of the media player. If you only sync the timestamp, the experience breaks the moment one person changes a setting.
+Here is everything you should track and broadcast through your WebSocket (the "Room State"):
+1. Playback State (The Basics)
+isPlaying: Boolean. If Person A pauses, Person B must pause instantly.
+currentTime: The exact second/frame.
+playbackRate: If one person speeds up to 1.5x to get through a boring scene, the other device must follow.
+2. Audio & Visuals
+volume & muted: Usually, you don't sync these (people have different speakers/environments), but if you want a "true" mirror, you can.
+activeAudioTrack: If the video has multiple languages (e.g., English/Spanish), sync the selection so they hear the same dialogue.
+qualityLevel: Syncing resolution (e.g., 1080p vs 720p) is usually best left to the individual's internet speed (Adaptive Bitrate), but you can force a "Master Quality" if you want them to see the exact same level of detail.
+3. Subtitles & Captions
+textTracks.mode: This is the "On/Off" toggle.
+activeTextTrack: The specific language (e.g., "English SDH").
+subtitleOffset: If the user adjusts the timing of the subs because they are out of sync with the audio, that offset should sync to the other person.
+4. UI & Meta-Interactions
+scrubbing State: A "User is seeking..." overlay. It’s helpful to show a ghost-slider on Person B’s screen when Person A is dragging the progress bar so they know why the video stopped.
+videoID / sourceURL: If Person A decides to switch to a different video in the playlist, the "Source" must update for everyone.
+pipMode (Picture-in-Picture): Usually local, but syncing it ensures both people have the same screen real-estate dedicated to the video.
+How to structure this in your JSON "Sync Object":
+json
+{
+  "roomID": "xyz-123",
+  "actor": "user_A",
+  "timestamp": 1712520000, 
+  "state": {
+    "play": true,
+    "time": 442.3,
+    "speed": 1.0,
+    "subtitle": { "enabled": true, "lang": "en", "offset": 0 },
+    "audio": { "lang": "jp" }
+  }
+}
+Use code with caution.
+
+Pro Tip: The "Master" vs. "Collaborative" Model
+Master Mode: Only one person can touch the controls. This is easier to code but less fun.
+Collaborative Mode: Anyone can pause or change subs. Race conditions happen here (e.g., both people click play at once). You'll need a "Last Event Wins" logic or a short cooldown (500ms) after any sync event.
+Do you want to see a database schema for how to store these "Room States" persistently?

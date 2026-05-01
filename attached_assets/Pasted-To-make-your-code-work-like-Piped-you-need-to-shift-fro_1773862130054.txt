@@ -1,0 +1,62 @@
+To make your code work like Piped, you need to shift from a "scraper" mindset to a "proxy" architecture. Currently, your code provides a URL to the browser and hopes it plays; Piped becomes the stream.
+Why Your Current Code Works (Partially)
+Your code uses yt-dlp to find "progressive" MP4s or DASH links.
+Success Cases: It works for older or less popular videos where YouTube hasn't enforced strict device-binding or bot detection.
+The yt-dlp Crutch: By using ios and tv_embedded clients, you are tricking YouTube into giving you a direct link that doesn't always require a complex signature.
+Why It Fails for Most Videos
+IP-Mismatch Block: When yt-dlp (on your server) gets a URL, that URL is often locked to your Server's IP. When the User's Browser tries to play it, YouTube sees a different IP and returns a 403 Forbidden error.
+The "n" Parameter Throttling: YouTube uses a shifting JavaScript challenge (the n parameter) to throttle download speeds to ~50KB/s unless solved. Spawning yt-dlp as a process is too slow to solve this reliably for every request.
+Client Retirement: YouTube recently "killed" several legacy clients like ios_downgraded and tv_embedded specifically to stop tools like yours from bypassing signatures.
+Missing PoToken: Modern YouTube requests require a "Proof of Token" (PoToken) to verify the request comes from a real app. Without it, you get the "Sign-in to confirm you're not a bot" block.
+How to Make It Work (The Piped Way)
+To match Piped’s reliability, you must implement these three pillars:
+1. Native Extraction (No more spawn)
+Instead of yt-dlp, use a library like YouTube.js (Innertube). It stays in memory and can solve the n-signature and cipher challenges in milliseconds using a built-in JIT compiler.
+2. The "True Proxy" (The Pipe)
+You must stop giving the browser a .googlevideo.com link. Instead, give the browser a link to your server, which then fetches the video data in the background and "pipes" it to the user.
+3. Integrated Signature Solving
+You must extract the base.js from the YouTube player and run the signature function in a Node.js vm sandbox to generate the correct URL parameters.
+Full Modified Logic Flow
+Replace your getProgressiveMp4Url with a persistent Streaming Proxy:
+javascript
+// 1. Get Metadata using a persistent library (Innertube)
+app.get('/api/stream-info/:id', async (req, res) => {
+    const info = await youtube.getBasicInfo(req.params.id);
+    const format = info.chooseFormat({ type: 'video+audio', quality: '720p' });
+    
+    // INSTEAD of returning the raw URL, return a link to YOUR proxy
+    res.json({ 
+        streamUrl: `/api/proxy?url=${encodeURIComponent(format.url)}` 
+    });
+});
+
+// 2. The Actual "Pipe"
+app.get('/api/proxy', async (req, res) => {
+    const targetUrl = req.query.url;
+    
+    const headers = {
+        'User-Agent': YT_UA,
+        'Range': req.headers.range || 'bytes=0-' // Critical for seeking
+    };
+
+    const response = await fetch(targetUrl, { headers });
+    
+    // Set headers to match what YouTube sent (type, length, range)
+    res.status(response.status);
+    res.set({
+        'Content-Type': response.headers.get('content-type'),
+        'Content-Length': response.headers.get('content-length'),
+        'Accept-Ranges': 'bytes'
+    });
+
+    // Directly pipe the data from Google -> Your Server -> User
+    // This solves IP mismatch because Google only sees Your Server's IP
+    const body = Readable.fromWeb(response.body);
+    body.pipe(res);
+});
+Use code with caution.
+
+Summary of Improvements
+IP Masking: YouTube only sees your server's IP for both the "ask" and the "fetch.".
+Bypassing CORS: The browser thinks it's watching a video from your domain, avoiding all cross-site security blocks.
+Consistency: By using a library like YouTube.js with a PoToken, you look like a legitimate client, not a bot.

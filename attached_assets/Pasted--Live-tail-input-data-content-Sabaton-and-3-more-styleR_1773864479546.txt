@@ -1,0 +1,256 @@
+
+
+Live tail
+
+
+
+  },
+  input_data: {
+    content: 'Sabaton and 3 more',
+    styleRuns: [ [Object], [Object] ],
+    attachmentRuns: [ [Object] ]
+  },
+  parsed_runs: [ { text: 'Sabaton and 3 more', startIndex: 0 } ]
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.422Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.423Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.423Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.423Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.423Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Text]: Unable to find matching run for attachment run. Skipping... {
+  attachment_run: {
+    startIndex: 7,
+    element: { type: [Object], properties: [Object] },
+    alignment: 'ALIGNMENT_VERTICAL_CENTER'
+  },
+  input_data: {
+    content: 'Sabaton and Better Noise Music',
+    styleRuns: [ [Object], [Object] ],
+    attachmentRuns: [ [Object] ]
+  },
+  parsed_runs: [ { text: 'Sabaton and Better Noise Music', startIndex: 0 } ]
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.424Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.424Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.424Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.424Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.424Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Text]: Unable to find matching run for attachment run. Skipping... {
+  attachment_run: {
+    startIndex: 21,
+    element: { type: [Object], properties: [Object] },
+    alignment: 'ALIGNMENT_VERTICAL_CENTER'
+  },
+  input_data: {
+    content: 'Nuclear Blast Records and Beast In Black',
+    styleRuns: [ [Object], [Object], [Object] ],
+    attachmentRuns: [ [Object], [Object] ]
+  },
+  parsed_runs: [
+    { text: 'Nuclear Blast Records and Beast In Black', startIndex: 0 }
+  ]
+}
+[YOUTUBEJS][Text]: Unable to find matching run for attachment run. Skipping... {
+  attachment_run: {
+    startIndex: 40,
+    element: { type: [Object], properties: [Object] },
+    alignment: 'ALIGNMENT_VERTICAL_CENTER'
+  },
+  input_data: {
+    content: 'Nuclear Blast Records and Beast In Black',
+    styleRuns: [ [Object], [Object], [Object] ],
+    attachmentRuns: [ [Object], [Object] ]
+  },
+  parsed_runs: [
+    { text: 'Nuclear Blast Records and Beast In Black', startIndex: 0 }
+  ]
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.425Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ThumbnailView expected CollectionThumbnailView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new LockupView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/LockupView.js:9:37)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at Module.parseArray (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:420:28)
+    at new TwoColumnWatchNextResults (file:///app/node_modules/youtubei.js/dist/src/parser/classes/TwoColumnWatchNextResults.js:14:41)
+    at parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at parse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:449:34)
+    at Module.parseResponse (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:136:22)
+    at new MediaInfo (file:///app/node_modules/youtubei.js/dist/src/core/mixins/MediaInfo.js:19:45) {
+  info: { image: { sources: [Array] }, overlays: [ [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.425Z,
+  version: '12.2.0'
+}
+[YOUTUBEJS][Parser]: ParsingError: Type mismatch, got ListView expected CreatePlaylistDialogFormView.
+    at ERROR_HANDLER (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:54:27)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:391:21)
+    at new DialogView (file:///app/node_modules/youtubei.js/dist/src/parser/classes/DialogView.js:11:38)
+    at Module.parseItem (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:400:28)
+    at new ShowDialogCommand (file:///app/node_modules/youtubei.js/dist/src/parser/classes/commands/ShowDialogCommand.js:6:38)
+    at Module.parseCommand (file:///app/node_modules/youtubei.js/dist/src/parser/parser.js:474:28)
+    at new NavigationEndpoint (file:///app/node_modules/youtubei.js/dist/src/parser/classes/NavigationEndpoint.js:17:31)
+    at new TextRun (file:///app/node_modules/youtubei.js/dist/src/parser/classes/misc/TextRun.js:11:29)
+    at file:///app/node_modules/youtubei.js/dist/src/parser/classes/misc/Text.js:21:17
+    at Array.map (<anonymous>) {
+  info: { listItems: [ [Object], [Object], [Object], [Object] ] },
+  date: 2026-03-18T20:07:06.426Z,
+  version: '12.2.0'
+}
+[innertube] getVideoFormats failed for z769xf9ET5A: No streaming data available
+[proxy] error: No streaming data available
+[format] muxed 360p itag=18
+[proxy] error: No suitable format found

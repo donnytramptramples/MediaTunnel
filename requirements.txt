@@ -1,0 +1,41 @@
+# YouTube Client & Downloader Requirements
+# =========================================
+
+# System Requirements
+# -------------------
+# Node.js >= 18.0.0
+# Python >= 3.8
+# FFmpeg (required)
+
+# Python Dependencies
+# -------------------
+yt-dlp>=2024.1.1
+
+# Node.js Runtime Dependencies (install via npm)
+# ----------------------------------------------
+# express@^4.18.2
+# youtubei.js@^9.0.2
+# fluent-ffmpeg@^2.1.2
+# ws@^8.16.0
+# cors@^2.8.5
+
+# Node.js Frontend Dependencies
+# -----------------------------
+# react@^18.2.0
+# react-dom@^18.2.0
+# @tanstack/react-query@^5.20.0
+
+# Node.js Dev Dependencies
+# ------------------------
+# @vitejs/plugin-react@^4.2.1
+# vite@^5.1.0
+# tailwindcss@^3.4.1
+# autoprefixer@^10.4.17
+# postcss@^8.4.35
+
+# Deployment Notes
+# ----------------
+# Platform: Requires Node.js runtime with system access
+# Incompatible with: Vercel, Netlify, Cloudflare Pages (serverless)
+# Compatible with: Render, Railway, DigitalOcean, Heroku, AWS EC2, VPS/Dedicated servers
+# Reason: Requires persistent Node.js server, FFmpeg, and yt-dlp system binaries

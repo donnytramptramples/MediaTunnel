@@ -1,0 +1,80 @@
+This code is a massive improvement over your previous version because it uses a native library (YouTube.js) to handle the complex extraction logic. However, it is not "correct" for all videos yet. To make it work as reliably as Piped, you need to address three critical missing pieces: PoToken generation, Signature/N-parameter solving, and DASH/Adaptive stream muxing. 
+GitHub
+GitHub
+ +1
+1. What's Still Missing
+The PoToken (Proof of Origin): YouTube now requires a poToken and visitorData to confirm your request comes from a genuine device. Without this, many videos will return a 403 Forbidden error or force a "Sign-in" wall. 
+Read the Docs
+Read the Docs
+ +1
+The "N" Parameter: Even with a valid URL, YouTube throttles download speeds to ~50KB/s unless you solve the "n-parameter" challenge. While YouTube.js can solve this, it requires you to set up a JavaScript Sandbox (JIT) to run the decryption code found in the YouTube player. 
+YouTube.js
+YouTube.js
+ +2
+Muxed vs. Adaptive: Your code prioritises "muxed" formats. YouTube only provides these at 360p or 720p for some videos. For 1080p+, you must use "adaptive" formats, which separate audio and video. To play these in one player, you need a DASH manifest (which Piped generates) or an FFmpeg bridge. 
+Oleksii Holub
+Oleksii Holub
+ +1
+2. Recommended Code Fixes
+A. Add PoToken Support
+You can use a external generator like youtube-po-token-generator. 
+javascript
+// Add these to your Innertube.create options
+youtube = await Innertube.create({
+  visitor_data: "YOUR_GENERATED_VISITOR_DATA",
+  po_token: "YOUR_GENERATED_POTOKEN",
+  // ... other options
+});
+Use code with caution.
+
+B. Handle the "N-Parameter" Decryption 
+In Node.js, you must enable the JIT compiler in YouTube.js so it can solve the throttling challenge. 
+YouTube.js
+YouTube.js
+javascript
+import { Platform } from 'youtubei.js';
+
+// Ensure the JIT is enabled before init
+Platform.shim.eval = (code, env) => {
+  return new Function(...Object.keys(env), code)(...Object.values(env));
+};
+Use code with caution.
+
+C. Full Proxy "Pipe" Improvements
+Ensure your proxy handles Range headers properly. If the browser asks for bytes=0-100, your proxy must request exactly that from YouTube. 
+Oleksii Holub
+Oleksii Holub
+ +1
+javascript
+app.get('/api/proxy/:videoId', async (req, res) => {
+  // ... select format logic ...
+  
+  const headers = {
+    'User-Agent': YT_UA,
+    'Referer': 'https://www.youtube.com'
+  };
+  
+  // Forward the browser's Range header to YouTube
+  if (req.headers.range) headers['Range'] = req.headers.range;
+
+  const upstream = await fetch(format.url, { headers, signal: controller.signal });
+
+  // Forward EXACT status (e.g., 206 Partial Content)
+  res.status(upstream.status);
+  
+  // Pass through all critical streaming headers
+  const passthrough = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
+  passthrough.forEach(h => {
+    const v = upstream.headers.get(h);
+    if (v) res.setHeader(h, v);
+  });
+
+  const body = Readable.fromWeb(upstream.body);
+  body.pipe(res);
+});
+Use code with caution.
+
+Summary Checklist to Reach "Piped" Level:
+[ ] Integrate a PoToken Generator: This is the #1 reason for 403 errors.
+[ ] Enable the JS Shim: This prevents the 50KB/s speed throttle.
+[ ] Use DASH Manifests: Instead of raw MP4s, serve a .mpd file (DASH) so the browser can combine high-quality video with its matching audio track. 
