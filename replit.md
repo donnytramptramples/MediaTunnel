@@ -10,10 +10,9 @@ The app opens on a **Home / platform-chooser** landing page by default. Users ca
 - `youtubei.js` (TV_EMBEDDED client) for search, metadata, comments, channel data, trending
 - `yt-dlp` for format extraction with multi-client fallback (tv_embedded → android_vr → mweb → android → ios)
 - `ffmpeg` for real-time muxing of separate video+audio streams and audio format transcoding
-- SQLite via `better-sqlite3`:
-  - `data/auth.db` — users + sessions + admin_config + admin_settings + admin_sessions + watch_history + user_preferences
-  - `data/subscriptions.db` — channel subscriptions per user
-  - `data/saved.db` — saved/bookmarked videos
+- Turso (libSQL cloud) via `@libsql/client`:
+  - All tables in one Turso database: users, sessions, admin_config, admin_settings, admin_sessions, watch_history, user_preferences, subscriptions, saved_videos
+  - Credentials: `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` secrets
 - Custom cookie-based auth (no express-session needed)
 - Admin panel at `/admin` (secret page, bcrypt-hashed password, set once)
 
@@ -118,8 +117,8 @@ All attempts include proper Origin/Referer headers.
 - Node.js 22
 - yt-dlp auto-downloaded to `$HOME/bin/yt-dlp` if missing
 - ffmpeg from system PATH
-- Python 3 required (for better-sqlite3 native compilation)
-- `better-sqlite3` compiled natively — if Node.js version changes, run `npm rebuild better-sqlite3`
+- Python 3 (available in environment)
+- `@libsql/client` for Turso cloud database (no native compilation required)
 
 ## Multi-Platform Support (Bilibili + Twitch)
 

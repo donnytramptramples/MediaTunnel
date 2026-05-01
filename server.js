@@ -10,7 +10,7 @@ import { spawn, execSync } from 'child_process';
 import os from 'os';
 import fs from 'fs';
 import crypto from 'crypto';
-import Database from 'better-sqlite3';
+import { dbGet, dbAll, dbRun, dbBatch } from './db.js';
 import bcrypt from 'bcryptjs';
 
 let FFMPEG;
@@ -269,220 +269,194 @@ async function initYouTube() {
 
 await initYouTube();
 
-// ─── SQLite Databases ────────────────────────────────────────────────────────
+// ─── Turso Database Init ─────────────────────────────────────────────────────
 
-const authDb = new Database(path.join(DATA_DIR, 'auth.db'));
-authDb.pragma('journal_mode = WAL');
-authDb.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS sessions (
-    token TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    last_seen INTEGER DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-  CREATE TABLE IF NOT EXISTS admin_config (
-    id INTEGER PRIMARY KEY CHECK(id = 1),
-    password_hash TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS admin_settings (
-    id INTEGER PRIMARY KEY CHECK(id = 1),
-    max_accounts INTEGER DEFAULT 1000,
-    max_connections INTEGER DEFAULT 500,
-    max_sessions INTEGER DEFAULT 0,
-    show_passwords INTEGER DEFAULT 0,
-    allow_co_watch INTEGER DEFAULT 0
-  );
-  INSERT OR IGNORE INTO admin_settings (id, max_accounts, max_connections) VALUES (1, 1000, 500);
-  CREATE TABLE IF NOT EXISTS admin_sessions (
-    token TEXT PRIMARY KEY,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS watch_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    video_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    channel TEXT DEFAULT '',
-    channel_id TEXT DEFAULT '',
-    thumbnail TEXT DEFAULT '',
-    watched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    user_hidden INTEGER DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
-  CREATE TABLE IF NOT EXISTS user_preferences (
-    user_id INTEGER PRIMARY KEY,
-    subscriptions_weight REAL DEFAULT 1.0,
-    trending_weight REAL DEFAULT 0.5,
-    show_trending INTEGER DEFAULT 1,
-    preferred_categories TEXT DEFAULT '{}',
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
-`);
+async function initDb() {
+  await dbBatch([
+    `CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      plain_password TEXT DEFAULT NULL,
+      email_hash TEXT DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      last_seen INTEGER DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS admin_config (
+      id INTEGER PRIMARY KEY CHECK(id = 1),
+      password_hash TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS admin_settings (
+      id INTEGER PRIMARY KEY CHECK(id = 1),
+      max_accounts INTEGER DEFAULT 1000,
+      max_connections INTEGER DEFAULT 500,
+      max_sessions INTEGER DEFAULT 0,
+      show_passwords INTEGER DEFAULT 0,
+      allow_co_watch INTEGER DEFAULT 0
+    )`,
+    `INSERT OR IGNORE INTO admin_settings (id, max_accounts, max_connections) VALUES (1, 1000, 500)`,
+    `CREATE TABLE IF NOT EXISTS admin_sessions (
+      token TEXT PRIMARY KEY,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS watch_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      video_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      channel TEXT DEFAULT '',
+      channel_id TEXT DEFAULT '',
+      thumbnail TEXT DEFAULT '',
+      watched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      user_hidden INTEGER DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id INTEGER PRIMARY KEY,
+      subscriptions_weight REAL DEFAULT 1.0,
+      trending_weight REAL DEFAULT 0.5,
+      show_trending INTEGER DEFAULT 1,
+      use_algorithm INTEGER DEFAULT 1,
+      preferred_categories TEXT DEFAULT '{}',
+      default_platform TEXT DEFAULT '',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      platform TEXT NOT NULL DEFAULT 'youtube',
+      channel_id TEXT NOT NULL,
+      channel_name TEXT NOT NULL,
+      channel_avatar TEXT DEFAULT '',
+      subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, platform, channel_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS saved_videos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      video_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      thumbnail TEXT DEFAULT '',
+      channel TEXT DEFAULT '',
+      channel_id TEXT DEFAULT '',
+      channel_avatar TEXT DEFAULT '',
+      duration TEXT DEFAULT '',
+      views TEXT DEFAULT '',
+      saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, video_id)
+    )`,
+  ]);
 
-// Migrations
-try { authDb.exec('ALTER TABLE sessions ADD COLUMN last_seen INTEGER DEFAULT 0'); } catch {}
-try { authDb.exec('ALTER TABLE user_preferences ADD COLUMN use_algorithm INTEGER DEFAULT 1'); } catch {}
-try { authDb.exec(`ALTER TABLE user_preferences ADD COLUMN default_platform TEXT DEFAULT ''`); } catch {}
-try { authDb.exec('ALTER TABLE users ADD COLUMN plain_password TEXT DEFAULT NULL'); } catch {}
-try { authDb.exec('ALTER TABLE users ADD COLUMN email_hash TEXT DEFAULT NULL'); } catch {}
-try { authDb.exec('ALTER TABLE admin_settings ADD COLUMN max_sessions INTEGER DEFAULT 0'); } catch {}
-try { authDb.exec('ALTER TABLE admin_settings ADD COLUMN show_passwords INTEGER DEFAULT 0'); } catch {}
-try { authDb.exec('ALTER TABLE watch_history ADD COLUMN user_hidden INTEGER DEFAULT 0'); } catch {}
-try { authDb.exec('ALTER TABLE admin_settings ADD COLUMN allow_co_watch INTEGER DEFAULT 0'); } catch {}
-authDb.prepare('UPDATE admin_settings SET max_sessions = 0 WHERE max_sessions IS NULL').run();
-authDb.prepare('UPDATE admin_settings SET show_passwords = 0 WHERE show_passwords IS NULL').run();
-authDb.prepare('UPDATE admin_settings SET allow_co_watch = 0 WHERE allow_co_watch IS NULL').run();
+  // Schema migrations — ignore errors if column already exists
+  const migrations = [
+    `ALTER TABLE sessions ADD COLUMN last_seen INTEGER DEFAULT 0`,
+    `ALTER TABLE user_preferences ADD COLUMN use_algorithm INTEGER DEFAULT 1`,
+    `ALTER TABLE user_preferences ADD COLUMN default_platform TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN plain_password TEXT DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN email_hash TEXT DEFAULT NULL`,
+    `ALTER TABLE admin_settings ADD COLUMN max_sessions INTEGER DEFAULT 0`,
+    `ALTER TABLE admin_settings ADD COLUMN show_passwords INTEGER DEFAULT 0`,
+    `ALTER TABLE watch_history ADD COLUMN user_hidden INTEGER DEFAULT 0`,
+    `ALTER TABLE admin_settings ADD COLUMN allow_co_watch INTEGER DEFAULT 0`,
+  ];
+  for (const sql of migrations) {
+    try { await dbRun(sql); } catch {}
+  }
 
-// Encrypt existing plaintext emails and plain_passwords, and populate email_hash
-{
-  const rows = authDb.prepare(`SELECT id, email, plain_password FROM users WHERE email NOT LIKE 'enc:%'`).all();
-  const upd = authDb.prepare('UPDATE users SET email = ?, email_hash = ?, plain_password = ? WHERE id = ?');
+  await dbRun('UPDATE admin_settings SET max_sessions = 0 WHERE max_sessions IS NULL');
+  await dbRun('UPDATE admin_settings SET show_passwords = 0 WHERE show_passwords IS NULL');
+  await dbRun('UPDATE admin_settings SET allow_co_watch = 0 WHERE allow_co_watch IS NULL');
+
+  // Encrypt existing plaintext emails/passwords and populate email_hash
+  const rows = await dbAll(`SELECT id, email, plain_password FROM users WHERE email NOT LIKE 'enc:%'`);
   for (const row of rows) {
     const encEmail = encrypt(row.email);
     const hash = emailHash(row.email);
     const encPwd = row.plain_password && !row.plain_password.startsWith('enc:') ? encrypt(row.plain_password) : row.plain_password;
-    upd.run(encEmail, hash, encPwd, row.id);
+    await dbRun('UPDATE users SET email = ?, email_hash = ?, plain_password = ? WHERE id = ?', [encEmail, hash, encPwd, row.id]);
   }
-  // Also ensure email_hash is set for already-encrypted rows missing a hash
-  const missingHash = authDb.prepare(`SELECT id, email FROM users WHERE email_hash IS NULL`).all();
-  const updHash = authDb.prepare('UPDATE users SET email_hash = ? WHERE id = ?');
+  const missingHash = await dbAll(`SELECT id, email FROM users WHERE email_hash IS NULL`);
   for (const row of missingHash) {
-    try { updHash.run(emailHash(decrypt(row.email)), row.id); } catch {}
+    try { await dbRun('UPDATE users SET email_hash = ? WHERE id = ?', [emailHash(decrypt(row.email)), row.id]); } catch {}
   }
   if (rows.length > 0) console.log(`[crypto] Encrypted ${rows.length} existing user records`);
+  console.log('[db] Turso database ready');
 }
 
-const subsDb = new Database(path.join(DATA_DIR, 'subscriptions.db'));
-subsDb.pragma('journal_mode = WAL');
-subsDb.exec(`
-  CREATE TABLE IF NOT EXISTS subscriptions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    platform TEXT NOT NULL DEFAULT 'youtube',
-    channel_id TEXT NOT NULL,
-    channel_name TEXT NOT NULL,
-    channel_avatar TEXT DEFAULT '',
-    subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, platform, channel_id)
-  );
-`);
-
-// One-time migration: legacy databases lack a `platform` column and use a
-// (user_id, channel_id) UNIQUE constraint that conflicts with multi-platform
-// channels. Detect and rewrite the table in place; existing rows default to
-// 'youtube' since that's all the prior implementation supported.
-{
-  const cols = subsDb.prepare("PRAGMA table_info(subscriptions)").all();
-  const hasPlatform = cols.some(c => c.name === 'platform');
-  if (!hasPlatform) {
-    console.log('[migration] subscriptions: adding platform column + (user_id, platform, channel_id) UNIQUE');
-    subsDb.exec(`
-      BEGIN;
-      ALTER TABLE subscriptions RENAME TO subscriptions_old;
-      CREATE TABLE subscriptions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        platform TEXT NOT NULL DEFAULT 'youtube',
-        channel_id TEXT NOT NULL,
-        channel_name TEXT NOT NULL,
-        channel_avatar TEXT DEFAULT '',
-        subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, platform, channel_id)
-      );
-      INSERT INTO subscriptions (id, user_id, platform, channel_id, channel_name, channel_avatar, subscribed_at)
-        SELECT id, user_id, 'youtube', channel_id, channel_name, channel_avatar, subscribed_at FROM subscriptions_old;
-      DROP TABLE subscriptions_old;
-      COMMIT;
-    `);
-  }
-}
-
-const savedDb = new Database(path.join(DATA_DIR, 'saved.db'));
-savedDb.pragma('journal_mode = WAL');
-savedDb.exec(`
-  CREATE TABLE IF NOT EXISTS saved_videos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    video_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    thumbnail TEXT DEFAULT '',
-    channel TEXT DEFAULT '',
-    channel_id TEXT DEFAULT '',
-    channel_avatar TEXT DEFAULT '',
-    duration TEXT DEFAULT '',
-    views TEXT DEFAULT '',
-    saved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, video_id)
-  );
-`);
+await initDb();
 
 // ─── Auth helpers ────────────────────────────────────────────────────────────
 
-function createSession(userId) {
+async function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;
-  authDb.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)').run(token, userId, expiresAt);
+  await dbRun('INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)', [token, userId, expiresAt]);
   return token;
 }
 
-function getSessionUser(token) {
+async function getSessionUser(token) {
   if (!token) return null;
-  const sess = authDb.prepare('SELECT * FROM sessions WHERE token = ?').get(token);
+  const sess = await dbGet('SELECT * FROM sessions WHERE token = ?', [token]);
   if (!sess || Date.now() > sess.expires_at) {
-    if (sess) authDb.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    if (sess) await dbRun('DELETE FROM sessions WHERE token = ?', [token]);
     return null;
   }
-  const u = authDb.prepare('SELECT id, username, email FROM users WHERE id = ?').get(sess.user_id);
+  const u = await dbGet('SELECT id, username, email FROM users WHERE id = ?', [sess.user_id]);
   if (u) u.email = decrypt(u.email);
   return u;
 }
 
-function requireAuth(req, res, next) {
-  const token = req.cookies?.session;
-  const user = getSessionUser(token);
-  if (!user) return res.status(401).json({ error: 'Not authenticated' });
-  req.user = user;
-  // Update last_seen
-  authDb.prepare('UPDATE sessions SET last_seen = ? WHERE token = ?').run(Date.now(), token);
-  next();
+async function requireAuth(req, res, next) {
+  try {
+    const token = req.cookies?.session;
+    const user = await getSessionUser(token);
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+    req.user = user;
+    await dbRun('UPDATE sessions SET last_seen = ? WHERE token = ?', [Date.now(), token]);
+    next();
+  } catch (e) {
+    next(e);
+  }
 }
 
 // ─── Admin auth helpers ───────────────────────────────────────────────────────
 
-function isAdminSetup() {
-  return !!authDb.prepare('SELECT id FROM admin_config WHERE id = 1').get();
+async function isAdminSetup() {
+  return !!(await dbGet('SELECT id FROM admin_config WHERE id = 1'));
 }
 
-function getAdminSession(token) {
+async function getAdminSession(token) {
   if (!token) return null;
-  const sess = authDb.prepare('SELECT * FROM admin_sessions WHERE token = ?').get(token);
+  const sess = await dbGet('SELECT * FROM admin_sessions WHERE token = ?', [token]);
   if (!sess || Date.now() > sess.expires_at) {
-    if (sess) authDb.prepare('DELETE FROM admin_sessions WHERE token = ?').run(token);
+    if (sess) await dbRun('DELETE FROM admin_sessions WHERE token = ?', [token]);
     return null;
   }
   return { admin: true };
 }
 
-function requireAdmin(req, res, next) {
-  const token = req.cookies?.admin_token;
-  const session = getAdminSession(token);
-  if (!session) return res.status(401).json({ error: 'Admin not authenticated' });
-  // Renew session on every authenticated request so active admins never get kicked
-  const renewed = Date.now() + 24 * 60 * 60 * 1000;
-  authDb.prepare('UPDATE admin_sessions SET expires_at = ? WHERE token = ?').run(renewed, token);
-  res.cookie('admin_token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax', path: '/' });
-  next();
+async function requireAdmin(req, res, next) {
+  try {
+    const token = req.cookies?.admin_token;
+    const session = await getAdminSession(token);
+    if (!session) return res.status(401).json({ error: 'Admin not authenticated' });
+    const renewed = Date.now() + 24 * 60 * 60 * 1000;
+    await dbRun('UPDATE admin_sessions SET expires_at = ? WHERE token = ?', [renewed, token]);
+    res.cookie('admin_token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax', path: '/' });
+    next();
+  } catch (e) {
+    next(e);
+  }
 }
 
 // ─── Express setup ───────────────────────────────────────────────────────────
@@ -545,12 +519,12 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // ─── Cache cleanup ───────────────────────────────────────────────────────────
 
-setInterval(() => {
+setInterval(async () => {
   const now = Date.now();
   for (const [key, val] of infoCache) {
     if (now - val.ts > CACHE_TTL) infoCache.delete(key);
   }
-  authDb.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now);
+  try { await dbRun('DELETE FROM sessions WHERE expires_at < ?', [now]); } catch {}
 }, 30 * 60 * 1000);
 
 // ─── Auth endpoints ──────────────────────────────────────────────────────────
@@ -563,9 +537,9 @@ app.post('/api/auth/register', async (req, res) => {
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
 
     // Check max accounts limit
-    const settings = authDb.prepare('SELECT max_accounts FROM admin_settings WHERE id = 1').get();
+    const settings = await dbGet('SELECT max_accounts FROM admin_settings WHERE id = 1');
     if (settings) {
-      const userCount = authDb.prepare('SELECT COUNT(*) as cnt FROM users').get();
+      const userCount = await dbGet('SELECT COUNT(*) as cnt FROM users');
       if (userCount.cnt >= settings.max_accounts) {
         return res.status(403).json({ error: 'Registration is currently closed (account limit reached)' });
       }
@@ -573,16 +547,18 @@ app.post('/api/auth/register', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     const cleanEmail = email.trim().toLowerCase();
-    const stmt = authDb.prepare('INSERT INTO users (username, email, email_hash, password_hash, plain_password) VALUES (?,?,?,?,?)');
     let result;
     try {
-      result = stmt.run(username.trim(), encrypt(cleanEmail), emailHash(cleanEmail), hash, encrypt(password));
+      result = await dbRun(
+        'INSERT INTO users (username, email, email_hash, password_hash, plain_password) VALUES (?,?,?,?,?)',
+        [username.trim(), encrypt(cleanEmail), emailHash(cleanEmail), hash, encrypt(password)]
+      );
     } catch (e) {
       if (e.message.includes('UNIQUE')) return res.status(409).json({ error: 'Username or email already taken' });
       throw e;
     }
 
-    const token = createSession(result.lastInsertRowid);
+    const token = await createSession(result.lastInsertRowid);
     res.cookie('session', token, {
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -601,22 +577,22 @@ app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
-    const user = authDb.prepare('SELECT * FROM users WHERE username = ? OR email_hash = ?').get(username, emailHash(username));
+    const user = await dbGet('SELECT * FROM users WHERE username = ? OR email_hash = ?', [username, emailHash(username)]);
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
     // Check concurrent session limit
-    const loginSettings = authDb.prepare('SELECT max_sessions FROM admin_settings WHERE id = 1').get();
+    const loginSettings = await dbGet('SELECT max_sessions FROM admin_settings WHERE id = 1');
     if (loginSettings?.max_sessions > 0) {
-      const activeSessions = authDb.prepare('SELECT COUNT(*) as cnt FROM sessions WHERE expires_at > ?').get(Date.now()).cnt;
+      const activeSessions = (await dbGet('SELECT COUNT(*) as cnt FROM sessions WHERE expires_at > ?', [Date.now()])).cnt;
       if (activeSessions >= loginSettings.max_sessions) {
         return res.status(429).json({ error: 'Server is full — maximum concurrent sessions reached. Try again later.' });
       }
     }
 
-    const token = createSession(user.id);
+    const token = await createSession(user.id);
     res.cookie('session', token, {
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -630,33 +606,33 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', async (req, res) => {
   const token = req.cookies?.session;
-  if (token) authDb.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+  if (token) try { await dbRun('DELETE FROM sessions WHERE token = ?', [token]); } catch {}
   res.clearCookie('session', { path: '/' });
   res.json({ ok: true });
 });
 
-app.get('/api/auth/me', (req, res) => {
+app.get('/api/auth/me', async (req, res) => {
   const token = req.cookies?.session;
-  const user = getSessionUser(token);
+  const user = await getSessionUser(token);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
   res.json({ user });
 });
 
 // ─── Admin endpoints ─────────────────────────────────────────────────────────
 
-app.get('/api/admin/status', (req, res) => {
-  res.json({ setup: isAdminSetup() });
+app.get('/api/admin/status', async (req, res) => {
+  res.json({ setup: await isAdminSetup() });
 });
 
 app.post('/api/admin/setup', async (req, res) => {
   try {
-    if (isAdminSetup()) return res.status(409).json({ error: 'Admin password already set. Cannot change.' });
+    if (await isAdminSetup()) return res.status(409).json({ error: 'Admin password already set. Cannot change.' });
     const { password } = req.body;
     if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
     const hash = await bcrypt.hash(password, 12);
-    authDb.prepare('INSERT INTO admin_config (id, password_hash) VALUES (1, ?)').run(hash);
+    await dbRun('INSERT INTO admin_config (id, password_hash) VALUES (1, ?)', [hash]);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -665,15 +641,15 @@ app.post('/api/admin/setup', async (req, res) => {
 
 app.post('/api/admin/login', async (req, res) => {
   try {
-    if (!isAdminSetup()) return res.status(403).json({ error: 'Admin not set up yet' });
+    if (!await isAdminSetup()) return res.status(403).json({ error: 'Admin not set up yet' });
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: 'Password required' });
-    const config = authDb.prepare('SELECT password_hash FROM admin_config WHERE id = 1').get();
+    const config = await dbGet('SELECT password_hash FROM admin_config WHERE id = 1');
     const ok = await bcrypt.compare(password, config.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid password' });
     const token = crypto.randomBytes(32).toString('hex');
     const now = Date.now();
-    authDb.prepare('INSERT INTO admin_sessions (token, created_at, expires_at) VALUES (?,?,?)').run(token, now, now + 24 * 60 * 60 * 1000);
+    await dbRun('INSERT INTO admin_sessions (token, created_at, expires_at) VALUES (?,?,?)', [token, now, now + 24 * 60 * 60 * 1000]);
     res.cookie('admin_token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax', path: '/' });
     res.json({ ok: true });
   } catch (e) {
@@ -681,9 +657,9 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-app.post('/api/admin/logout', requireAdmin, (req, res) => {
+app.post('/api/admin/logout', requireAdmin, async (req, res) => {
   const token = req.cookies?.admin_token;
-  if (token) authDb.prepare('DELETE FROM admin_sessions WHERE token = ?').run(token);
+  if (token) try { await dbRun('DELETE FROM admin_sessions WHERE token = ?', [token]); } catch {}
   res.clearCookie('admin_token', { path: '/' });
   res.json({ ok: true });
 });
@@ -692,22 +668,21 @@ app.get('/api/admin/check', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/admin/users', requireAdmin, (req, res) => {
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
-    const users = authDb.prepare(`
+    const users = await dbAll(`
       SELECT u.id, u.username, u.email, u.created_at, u.plain_password,
         (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id AND s.expires_at > ?) as active_sessions,
         (SELECT MAX(s.last_seen) FROM sessions s WHERE s.user_id = u.id) as last_seen,
         (SELECT COUNT(*) FROM watch_history wh WHERE wh.user_id = u.id) as watch_count
       FROM users u ORDER BY u.created_at DESC
-    `).all(Date.now());
+    `, [Date.now()]);
 
     // Decrypt sensitive fields — only expose plain_password when show_passwords is enabled
-    const adminCfg = authDb.prepare('SELECT show_passwords FROM admin_settings WHERE id = 1').get();
+    const adminCfg = await dbGet('SELECT show_passwords FROM admin_settings WHERE id = 1');
     const showPwds = !!(adminCfg?.show_passwords);
     for (const u of users) {
       const decEmail = decrypt(u.email);
-      // If decryption failed the raw enc: string is returned — hide it
       u.email = (decEmail && !decEmail.startsWith('enc:')) ? decEmail : null;
       if (showPwds && u.plain_password) {
         const dec = decrypt(u.plain_password);
@@ -717,10 +692,8 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
       }
     }
 
-    // Attach subscription count from subsDb
-    const subCounts = subsDb.prepare(`
-      SELECT user_id, COUNT(*) as sub_count FROM subscriptions GROUP BY user_id
-    `).all();
+    // Attach subscription count
+    const subCounts = await dbAll(`SELECT user_id, COUNT(*) as sub_count FROM subscriptions GROUP BY user_id`);
     const subMap = {};
     for (const row of subCounts) subMap[row.user_id] = row.sub_count;
     for (const u of users) u.sub_count = subMap[u.id] || 0;
@@ -730,7 +703,7 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
     const recentThreshold = now - 15 * 60 * 1000;
     const connectedUsers = users.filter(u => u.last_seen && u.last_seen > recentThreshold).length;
 
-    const settings = authDb.prepare('SELECT * FROM admin_settings WHERE id = 1').get();
+    const settings = await dbGet('SELECT * FROM admin_settings WHERE id = 1');
 
     res.json({ users, totalUsers, connectedUsers, settings });
   } catch (e) {
@@ -738,15 +711,15 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   }
 });
 
-app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    authDb.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
-    authDb.prepare('DELETE FROM watch_history WHERE user_id = ?').run(id);
-    authDb.prepare('DELETE FROM user_preferences WHERE user_id = ?').run(id);
-    subsDb.prepare('DELETE FROM subscriptions WHERE user_id = ?').run(id);
-    savedDb.prepare('DELETE FROM saved_videos WHERE user_id = ?').run(id);
-    authDb.prepare('DELETE FROM users WHERE id = ?').run(id);
+    await dbRun('DELETE FROM sessions WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM watch_history WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM user_preferences WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM subscriptions WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM saved_videos WHERE user_id = ?', [id]);
+    await dbRun('DELETE FROM users WHERE id = ?', [id]);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -759,62 +732,60 @@ app.post('/api/admin/users/:id/reset-password', requireAdmin, async (req, res) =
     const { password } = req.body;
     if (!password || password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
     const hash = await bcrypt.hash(password, 10);
-    authDb.prepare('UPDATE users SET password_hash = ?, plain_password = ? WHERE id = ?').run(hash, encrypt(password), id);
-    authDb.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+    await dbRun('UPDATE users SET password_hash = ?, plain_password = ? WHERE id = ?', [hash, encrypt(password), id]);
+    await dbRun('DELETE FROM sessions WHERE user_id = ?', [id]);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.get('/api/admin/users/:id/watch-history', requireAdmin, (req, res) => {
+app.get('/api/admin/users/:id/watch-history', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const history = authDb.prepare(`
-      SELECT * FROM watch_history WHERE user_id = ? ORDER BY watched_at DESC LIMIT 100
-    `).all(id);
-    const user = authDb.prepare('SELECT id, username, email FROM users WHERE id = ?').get(id);
+    const history = await dbAll('SELECT * FROM watch_history WHERE user_id = ? ORDER BY watched_at DESC LIMIT 100', [id]);
+    const user = await dbGet('SELECT id, username, email FROM users WHERE id = ?', [id]);
     res.json({ user, history });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.get('/api/admin/users/:id/subscriptions', requireAdmin, (req, res) => {
+app.get('/api/admin/users/:id/subscriptions', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const subs = subsDb.prepare('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY subscribed_at DESC').all(id);
-    const user = authDb.prepare('SELECT id, username FROM users WHERE id = ?').get(id);
+    const subs = await dbAll('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY subscribed_at DESC', [id]);
+    const user = await dbGet('SELECT id, username FROM users WHERE id = ?', [id]);
     res.json({ user, subscriptions: subs });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.get('/api/admin/settings', requireAdmin, (req, res) => {
-  const settings = authDb.prepare('SELECT * FROM admin_settings WHERE id = 1').get();
+app.get('/api/admin/settings', requireAdmin, async (req, res) => {
+  const settings = await dbGet('SELECT * FROM admin_settings WHERE id = 1');
   res.json({ settings });
 });
 
-app.post('/api/admin/settings', requireAdmin, (req, res) => {
+app.post('/api/admin/settings', requireAdmin, async (req, res) => {
   try {
     const { max_accounts, max_connections, max_sessions, show_passwords, allow_co_watch } = req.body;
     if (max_accounts !== undefined) {
-      authDb.prepare('UPDATE admin_settings SET max_accounts = ? WHERE id = 1').run(parseInt(max_accounts));
+      await dbRun('UPDATE admin_settings SET max_accounts = ? WHERE id = 1', [parseInt(max_accounts)]);
     }
     if (max_connections !== undefined) {
-      authDb.prepare('UPDATE admin_settings SET max_connections = ? WHERE id = 1').run(parseInt(max_connections));
+      await dbRun('UPDATE admin_settings SET max_connections = ? WHERE id = 1', [parseInt(max_connections)]);
     }
     if (max_sessions !== undefined) {
-      authDb.prepare('UPDATE admin_settings SET max_sessions = ? WHERE id = 1').run(Math.max(0, parseInt(max_sessions) || 0));
+      await dbRun('UPDATE admin_settings SET max_sessions = ? WHERE id = 1', [Math.max(0, parseInt(max_sessions) || 0)]);
     }
     if (show_passwords !== undefined) {
-      authDb.prepare('UPDATE admin_settings SET show_passwords = ? WHERE id = 1').run(show_passwords ? 1 : 0);
+      await dbRun('UPDATE admin_settings SET show_passwords = ? WHERE id = 1', [show_passwords ? 1 : 0]);
     }
     if (allow_co_watch !== undefined) {
-      authDb.prepare('UPDATE admin_settings SET allow_co_watch = ? WHERE id = 1').run(allow_co_watch ? 1 : 0);
+      await dbRun('UPDATE admin_settings SET allow_co_watch = ? WHERE id = 1', [allow_co_watch ? 1 : 0]);
     }
-    const settings = authDb.prepare('SELECT * FROM admin_settings WHERE id = 1').get();
+    const settings = await dbGet('SELECT * FROM admin_settings WHERE id = 1');
     res.json({ settings });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -833,19 +804,21 @@ const coWatchTargets = new Map();
 // Prevents flooding admins at 200ms WS update rate (max once per 2s per user)
 const watchingBroadcastThrottle = new Map();
 
-function broadcastWatchingToAdmins() {
+async function broadcastWatchingToAdmins() {
   if (adminWsClients.size === 0) return;
-  const cfg = authDb.prepare('SELECT allow_co_watch FROM admin_settings WHERE id = 1').get();
-  if (!cfg?.allow_co_watch) return;
-  const now = Date.now();
-  const active = [];
-  for (const entry of watchingNow.values()) {
-    if (now - entry.updatedAt < 35000) active.push(entry);
-  }
-  const msg = JSON.stringify({ type: 'watching_update', watching: active });
-  for (const ws of adminWsClients) {
-    if (ws.readyState === 1) ws.send(msg);
-  }
+  try {
+    const cfg = await dbGet('SELECT allow_co_watch FROM admin_settings WHERE id = 1');
+    if (!cfg?.allow_co_watch) return;
+    const now = Date.now();
+    const active = [];
+    for (const entry of watchingNow.values()) {
+      if (now - entry.updatedAt < 35000) active.push(entry);
+    }
+    const msg = JSON.stringify({ type: 'watching_update', watching: active });
+    for (const ws of adminWsClients) {
+      if (ws.readyState === 1) ws.send(msg);
+    }
+  } catch {}
 }
 
 // Push a single user's state to every admin WS that registered interest via cowatch_join
@@ -886,8 +859,8 @@ app.post('/api/watching/stop', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/admin/watching', requireAdmin, (req, res) => {
-  const cfg = authDb.prepare('SELECT allow_co_watch FROM admin_settings WHERE id = 1').get();
+app.get('/api/admin/watching', requireAdmin, async (req, res) => {
+  const cfg = await dbGet('SELECT allow_co_watch FROM admin_settings WHERE id = 1');
   if (!cfg?.allow_co_watch) return res.status(403).json({ error: 'Co-watch is disabled' });
   const now = Date.now();
   const active = [];
@@ -897,8 +870,8 @@ app.get('/api/admin/watching', requireAdmin, (req, res) => {
   res.json({ watching: active });
 });
 
-app.get('/api/admin/watching/:userId', requireAdmin, (req, res) => {
-  const cfg = authDb.prepare('SELECT allow_co_watch FROM admin_settings WHERE id = 1').get();
+app.get('/api/admin/watching/:userId', requireAdmin, async (req, res) => {
+  const cfg = await dbGet('SELECT allow_co_watch FROM admin_settings WHERE id = 1');
   if (!cfg?.allow_co_watch) return res.status(403).json({ error: 'Co-watch is disabled' });
   const entry = watchingNow.get(parseInt(req.params.userId));
   if (!entry) return res.status(404).json({ error: 'User not currently watching' });
@@ -907,8 +880,8 @@ app.get('/api/admin/watching/:userId', requireAdmin, (req, res) => {
 
 // ─── Bandwidth stats ─────────────────────────────────────────────────────────
 
-app.get('/api/admin/bandwidth', requireAdmin, (req, res) => {
-  const users = authDb.prepare('SELECT id, username FROM users').all();
+app.get('/api/admin/bandwidth', requireAdmin, async (req, res) => {
+  const users = await dbAll('SELECT id, username FROM users');
   const userMap = new Map(users.map(u => [u.id, u.username]));
 
   const now = Math.floor(Date.now() / BW_BUCKET_MS) * BW_BUCKET_MS;
@@ -935,21 +908,20 @@ app.get('/api/admin/bandwidth', requireAdmin, (req, res) => {
 
 // ─── Watch history (user-facing) ─────────────────────────────────────────────
 
-app.post('/api/watch/:videoId', requireAuth, (req, res) => {
+app.post('/api/watch/:videoId', requireAuth, async (req, res) => {
   try {
     const { videoId } = req.params;
     const { title, channel, channelId, thumbnail } = req.body;
     if (!title) return res.status(400).json({ error: 'title required' });
     // Keep only last 200 history entries per user
-    const count = authDb.prepare('SELECT COUNT(*) as cnt FROM watch_history WHERE user_id = ?').get(req.user.id);
+    const count = await dbGet('SELECT COUNT(*) as cnt FROM watch_history WHERE user_id = ?', [req.user.id]);
     if (count.cnt >= 200) {
-      authDb.prepare('DELETE FROM watch_history WHERE user_id = ? AND id = (SELECT MIN(id) FROM watch_history WHERE user_id = ?)').run(req.user.id, req.user.id);
+      await dbRun('DELETE FROM watch_history WHERE user_id = ? AND id = (SELECT MIN(id) FROM watch_history WHERE user_id = ?)', [req.user.id, req.user.id]);
     }
     // Check if already watched recently (last 30 min), don't duplicate
-    // Exclude hidden rows so clearing history allows re-watches to appear again
-    const recent = authDb.prepare(`SELECT id FROM watch_history WHERE user_id = ? AND video_id = ? AND user_hidden = 0 AND watched_at > datetime('now', '-30 minutes')`).get(req.user.id, videoId);
+    const recent = await dbGet(`SELECT id FROM watch_history WHERE user_id = ? AND video_id = ? AND user_hidden = 0 AND watched_at > datetime('now', '-30 minutes')`, [req.user.id, videoId]);
     if (!recent) {
-      authDb.prepare('INSERT INTO watch_history (user_id, video_id, title, channel, channel_id, thumbnail) VALUES (?,?,?,?,?,?)').run(req.user.id, videoId, title, channel || '', channelId || '', thumbnail || '');
+      await dbRun('INSERT INTO watch_history (user_id, video_id, title, channel, channel_id, thumbnail) VALUES (?,?,?,?,?,?)', [req.user.id, videoId, title, channel || '', channelId || '', thumbnail || '']);
     }
     res.json({ ok: true });
   } catch (e) {
@@ -957,18 +929,18 @@ app.post('/api/watch/:videoId', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/watch/history', requireAuth, (req, res) => {
+app.get('/api/watch/history', requireAuth, async (req, res) => {
   try {
-    const history = authDb.prepare('SELECT * FROM watch_history WHERE user_id = ? AND user_hidden = 0 ORDER BY watched_at DESC LIMIT 50').all(req.user.id);
+    const history = await dbAll('SELECT * FROM watch_history WHERE user_id = ? AND user_hidden = 0 ORDER BY watched_at DESC LIMIT 50', [req.user.id]);
     res.json({ history });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.delete('/api/watch/history', requireAuth, (req, res) => {
+app.delete('/api/watch/history', requireAuth, async (req, res) => {
   try {
-    authDb.prepare('UPDATE watch_history SET user_hidden = 1 WHERE user_id = ?').run(req.user.id);
+    await dbRun('UPDATE watch_history SET user_hidden = 1 WHERE user_id = ?', [req.user.id]);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -979,9 +951,9 @@ app.delete('/api/watch/history', requireAuth, (req, res) => {
 
 const ALLOWED_DEFAULT_PLATFORMS = new Set(['', 'home', 'feed', 'shorts', 'bilibili', 'twitch']);
 
-app.get('/api/preferences', requireAuth, (req, res) => {
+app.get('/api/preferences', requireAuth, async (req, res) => {
   try {
-    let prefs = authDb.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
+    let prefs = await dbGet('SELECT * FROM user_preferences WHERE user_id = ?', [req.user.id]);
     if (!prefs) {
       prefs = { user_id: req.user.id, subscriptions_weight: 1.0, trending_weight: 0.5, show_trending: 1, use_algorithm: 1, preferred_categories: '{}', default_platform: '' };
     }
@@ -991,7 +963,7 @@ app.get('/api/preferences', requireAuth, (req, res) => {
   }
 });
 
-app.post('/api/preferences', requireAuth, (req, res) => {
+app.post('/api/preferences', requireAuth, async (req, res) => {
   try {
     const { subscriptions_weight, trending_weight, show_trending, use_algorithm, preferred_categories, default_platform } = req.body;
     let dp = null;
@@ -1001,9 +973,9 @@ app.post('/api/preferences', requireAuth, (req, res) => {
       }
       dp = default_platform;
     }
-    const existing = authDb.prepare('SELECT user_id FROM user_preferences WHERE user_id = ?').get(req.user.id);
+    const existing = await dbGet('SELECT user_id FROM user_preferences WHERE user_id = ?', [req.user.id]);
     if (existing) {
-      authDb.prepare(`UPDATE user_preferences SET 
+      await dbRun(`UPDATE user_preferences SET 
         subscriptions_weight = COALESCE(?, subscriptions_weight),
         trending_weight = COALESCE(?, trending_weight),
         show_trending = COALESCE(?, show_trending),
@@ -1011,27 +983,27 @@ app.post('/api/preferences', requireAuth, (req, res) => {
         preferred_categories = COALESCE(?, preferred_categories),
         default_platform = COALESCE(?, default_platform),
         updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = ?`).run(
+        WHERE user_id = ?`, [
         subscriptions_weight ?? null,
         trending_weight ?? null,
         show_trending !== undefined ? (show_trending ? 1 : 0) : null,
         use_algorithm !== undefined ? (use_algorithm ? 1 : 0) : null,
         preferred_categories !== undefined ? JSON.stringify(preferred_categories) : null,
         dp,
-        req.user.id
-      );
+        req.user.id,
+      ]);
     } else {
-      authDb.prepare(`INSERT INTO user_preferences (user_id, subscriptions_weight, trending_weight, show_trending, use_algorithm, preferred_categories, default_platform) VALUES (?,?,?,?,?,?,?)`).run(
+      await dbRun(`INSERT INTO user_preferences (user_id, subscriptions_weight, trending_weight, show_trending, use_algorithm, preferred_categories, default_platform) VALUES (?,?,?,?,?,?,?)`, [
         req.user.id,
         subscriptions_weight ?? 1.0,
         trending_weight ?? 0.5,
         show_trending !== undefined ? (show_trending ? 1 : 0) : 1,
         use_algorithm !== undefined ? (use_algorithm ? 1 : 0) : 1,
         preferred_categories !== undefined ? JSON.stringify(preferred_categories) : '{}',
-        dp ?? ''
-      );
+        dp ?? '',
+      ]);
     }
-    let prefs = authDb.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
+    const prefs = await dbGet('SELECT * FROM user_preferences WHERE user_id = ?', [req.user.id]);
     res.json({ preferences: { ...prefs, default_platform: prefs.default_platform || '', preferred_categories: JSON.parse(prefs.preferred_categories || '{}') } });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1042,11 +1014,11 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
-    const user = authDb.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const user = await dbGet('SELECT * FROM users WHERE id = ?', [req.user.id]);
     const match = await bcrypt.compare(currentPassword || '', user.password_hash);
     if (!match) return res.status(401).json({ error: 'Current password is incorrect' });
     const hash = await bcrypt.hash(newPassword, 10);
-    authDb.prepare('UPDATE users SET password_hash = ?, plain_password = ? WHERE id = ?').run(hash, encrypt(newPassword), req.user.id);
+    await dbRun('UPDATE users SET password_hash = ?, plain_password = ? WHERE id = ?', [hash, encrypt(newPassword), req.user.id]);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1056,15 +1028,15 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
 app.post('/api/auth/delete-account', requireAuth, async (req, res) => {
   try {
     const { password } = req.body;
-    const user = authDb.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const user = await dbGet('SELECT * FROM users WHERE id = ?', [req.user.id]);
     const match = await bcrypt.compare(password || '', user.password_hash);
     if (!match) return res.status(401).json({ error: 'Incorrect password' });
-    authDb.prepare('DELETE FROM sessions WHERE user_id = ?').run(req.user.id);
-    authDb.prepare('DELETE FROM watch_history WHERE user_id = ?').run(req.user.id);
-    authDb.prepare('DELETE FROM user_preferences WHERE user_id = ?').run(req.user.id);
-    subsDb.prepare('DELETE FROM subscriptions WHERE user_id = ?').run(req.user.id);
-    try { savedDb.prepare('DELETE FROM saved_videos WHERE user_id = ?').run(req.user.id); } catch {}
-    authDb.prepare('DELETE FROM users WHERE id = ?').run(req.user.id);
+    await dbRun('DELETE FROM sessions WHERE user_id = ?', [req.user.id]);
+    await dbRun('DELETE FROM watch_history WHERE user_id = ?', [req.user.id]);
+    await dbRun('DELETE FROM user_preferences WHERE user_id = ?', [req.user.id]);
+    await dbRun('DELETE FROM subscriptions WHERE user_id = ?', [req.user.id]);
+    try { await dbRun('DELETE FROM saved_videos WHERE user_id = ?', [req.user.id]); } catch {}
+    await dbRun('DELETE FROM users WHERE id = ?', [req.user.id]);
     res.clearCookie('session');
     res.json({ ok: true });
   } catch (e) {
@@ -1082,49 +1054,49 @@ function normalizePlatform(p) {
   return (v === 'bilibili' || v === 'twitch') ? v : 'youtube';
 }
 
-app.get('/api/subscriptions', requireAuth, (req, res) => {
+app.get('/api/subscriptions', requireAuth, async (req, res) => {
   const platform = req.query.platform ? normalizePlatform(req.query.platform) : null;
   const subs = platform
-    ? subsDb.prepare('SELECT * FROM subscriptions WHERE user_id = ? AND platform = ? ORDER BY subscribed_at DESC').all(req.user.id, platform)
-    : subsDb.prepare('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY subscribed_at DESC').all(req.user.id);
+    ? await dbAll('SELECT * FROM subscriptions WHERE user_id = ? AND platform = ? ORDER BY subscribed_at DESC', [req.user.id, platform])
+    : await dbAll('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY subscribed_at DESC', [req.user.id]);
   res.json({ subscriptions: subs });
 });
 
-app.post('/api/subscriptions', requireAuth, (req, res) => {
+app.post('/api/subscriptions', requireAuth, async (req, res) => {
   const { channelId, channelName, channelAvatar } = req.body;
   const platform = normalizePlatform(req.body.platform);
   if (!channelId || !channelName) return res.status(400).json({ error: 'channelId and channelName required' });
   try {
-    subsDb.prepare('INSERT OR REPLACE INTO subscriptions (user_id, platform, channel_id, channel_name, channel_avatar) VALUES (?,?,?,?,?)')
-      .run(req.user.id, platform, String(channelId), channelName, channelAvatar || '');
+    await dbRun('INSERT OR REPLACE INTO subscriptions (user_id, platform, channel_id, channel_name, channel_avatar) VALUES (?,?,?,?,?)',
+      [req.user.id, platform, String(channelId), channelName, channelAvatar || '']);
     res.json({ ok: true, platform });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.delete('/api/subscriptions/:channelId', requireAuth, (req, res) => {
+app.delete('/api/subscriptions/:channelId', requireAuth, async (req, res) => {
   const platform = normalizePlatform(req.query.platform || req.body?.platform);
-  subsDb.prepare('DELETE FROM subscriptions WHERE user_id = ? AND platform = ? AND channel_id = ?')
-    .run(req.user.id, platform, req.params.channelId);
+  await dbRun('DELETE FROM subscriptions WHERE user_id = ? AND platform = ? AND channel_id = ?',
+    [req.user.id, platform, req.params.channelId]);
   res.json({ ok: true });
 });
 
-app.get('/api/subscriptions/:channelId/status', requireAuth, (req, res) => {
+app.get('/api/subscriptions/:channelId/status', requireAuth, async (req, res) => {
   const platform = normalizePlatform(req.query.platform);
-  const row = subsDb.prepare('SELECT 1 FROM subscriptions WHERE user_id = ? AND platform = ? AND channel_id = ?')
-    .get(req.user.id, platform, req.params.channelId);
+  const row = await dbGet('SELECT 1 FROM subscriptions WHERE user_id = ? AND platform = ? AND channel_id = ?',
+    [req.user.id, platform, req.params.channelId]);
   res.json({ subscribed: !!row, platform });
 });
 
-app.post('/api/subscriptions/:channelId', requireAuth, (req, res) => {
+app.post('/api/subscriptions/:channelId', requireAuth, async (req, res) => {
   const { channelId } = req.params;
   const { channelName, channelAvatar } = req.body;
   const platform = normalizePlatform(req.body?.platform || req.query.platform);
   if (!channelName) return res.status(400).json({ error: 'channelName required' });
   try {
-    subsDb.prepare('INSERT OR REPLACE INTO subscriptions (user_id, platform, channel_id, channel_name, channel_avatar) VALUES (?,?,?,?,?)')
-      .run(req.user.id, platform, String(channelId), channelName, channelAvatar || '');
+    await dbRun('INSERT OR REPLACE INTO subscriptions (user_id, platform, channel_id, channel_name, channel_avatar) VALUES (?,?,?,?,?)',
+      [req.user.id, platform, String(channelId), channelName, channelAvatar || '']);
     res.json({ ok: true, platform });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1133,8 +1105,8 @@ app.post('/api/subscriptions/:channelId', requireAuth, (req, res) => {
 
 // ─── Saved videos endpoints ──────────────────────────────────────────────────
 
-app.get('/api/saved', requireAuth, (req, res) => {
-  const videos = savedDb.prepare('SELECT * FROM saved_videos WHERE user_id = ? ORDER BY saved_at DESC').all(req.user.id);
+app.get('/api/saved', requireAuth, async (req, res) => {
+  const videos = await dbAll('SELECT * FROM saved_videos WHERE user_id = ? ORDER BY saved_at DESC', [req.user.id]);
   res.json({ videos: videos.map(v => ({
     id: v.video_id,
     title: v.title,
@@ -1148,28 +1120,28 @@ app.get('/api/saved', requireAuth, (req, res) => {
   })) });
 });
 
-app.post('/api/saved/:videoId', requireAuth, (req, res) => {
+app.post('/api/saved/:videoId', requireAuth, async (req, res) => {
   const { videoId } = req.params;
   const { title, thumbnail, channel, channelId, channelAvatar, duration, views } = req.body;
   if (!title) return res.status(400).json({ error: 'title required' });
   try {
-    savedDb.prepare(`
-      INSERT OR REPLACE INTO saved_videos (user_id, video_id, title, thumbnail, channel, channel_id, channel_avatar, duration, views)
-      VALUES (?,?,?,?,?,?,?,?,?)
-    `).run(req.user.id, videoId, title, thumbnail || '', channel || '', channelId || '', channelAvatar || '', duration || '', views || '');
+    await dbRun(
+      `INSERT OR REPLACE INTO saved_videos (user_id, video_id, title, thumbnail, channel, channel_id, channel_avatar, duration, views) VALUES (?,?,?,?,?,?,?,?,?)`,
+      [req.user.id, videoId, title, thumbnail || '', channel || '', channelId || '', channelAvatar || '', duration || '', views || '']
+    );
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.delete('/api/saved/:videoId', requireAuth, (req, res) => {
-  savedDb.prepare('DELETE FROM saved_videos WHERE user_id = ? AND video_id = ?').run(req.user.id, req.params.videoId);
+app.delete('/api/saved/:videoId', requireAuth, async (req, res) => {
+  await dbRun('DELETE FROM saved_videos WHERE user_id = ? AND video_id = ?', [req.user.id, req.params.videoId]);
   res.json({ ok: true });
 });
 
-app.get('/api/saved/:videoId/status', requireAuth, (req, res) => {
-  const row = savedDb.prepare('SELECT 1 FROM saved_videos WHERE user_id = ? AND video_id = ?').get(req.user.id, req.params.videoId);
+app.get('/api/saved/:videoId/status', requireAuth, async (req, res) => {
+  const row = await dbGet('SELECT 1 FROM saved_videos WHERE user_id = ? AND video_id = ?', [req.user.id, req.params.videoId]);
   res.json({ saved: !!row });
 });
 
@@ -2708,11 +2680,11 @@ function getFeedPopularityScore(views) {
 
 app.get('/api/feed', requireAuth, async (req, res) => {
   try {
-    const subs = subsDb.prepare('SELECT * FROM subscriptions WHERE user_id = ?').all(req.user.id);
+    const subs = await dbAll('SELECT * FROM subscriptions WHERE user_id = ?', [req.user.id]);
     const allVideos = [];
 
     // Load user preferences
-    let prefs = authDb.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(req.user.id);
+    let prefs = await dbGet('SELECT * FROM user_preferences WHERE user_id = ?', [req.user.id]);
     if (!prefs) prefs = { subscriptions_weight: 1.0, trending_weight: 0.5, show_trending: 1, use_algorithm: 1 };
 
     const useAlgorithm = prefs.use_algorithm !== 0;
@@ -3264,8 +3236,8 @@ app.get('/api/subtitles/:videoId/translate', async (req, res) => {
 // ─── Stream availability check (called before video loads) ───────────────────
 // Uses activeStreamSet — the live count of open proxy connections, accurate in real-time.
 
-app.get('/api/stream/available', requireAuth, (req, res) => {
-  const streamSettings = authDb.prepare('SELECT max_connections FROM admin_settings WHERE id = 1').get();
+app.get('/api/stream/available', requireAuth, async (req, res) => {
+  const streamSettings = await dbGet('SELECT max_connections FROM admin_settings WHERE id = 1');
   const maxStreams = streamSettings?.max_connections ?? MAX_CONCURRENT_STREAMS;
   const current = activeStreamSet.size;
   // If this user already has a stream slot, seeking/reloading won't consume an extra slot
@@ -3311,7 +3283,7 @@ app.get('/api/proxy/:videoId', async (req, res) => {
   console.log(`[proxy] ${videoId} q=${quality} seek=${seekSeconds}s range=${rangeHeader || 'none'}`);
 
   // Optional user detection for bandwidth accounting
-  const _bwUser = getSessionUser(req.cookies?.session);
+  const _bwUser = await getSessionUser(req.cookies?.session);
   const _bwUid = _bwUser?.id ?? null;
   const _origWrite = res.write.bind(res);
   const _origEnd = res.end.bind(res);
@@ -3335,7 +3307,7 @@ app.get('/api/proxy/:videoId', async (req, res) => {
   const _proxyUserKey = _bwUid != null ? `uid:${_bwUid}` : `ip:${req.ip}`;
 
   if (!_proxyIsAdmin) {
-    const _proxySettings = authDb.prepare('SELECT max_connections FROM admin_settings WHERE id = 1').get();
+    const _proxySettings = await dbGet('SELECT max_connections FROM admin_settings WHERE id = 1');
     const _proxyMax = _proxySettings?.max_connections ?? MAX_CONCURRENT_STREAMS;
 
     // If this user already has an active stream, release it first so seeking
@@ -3518,7 +3490,7 @@ app.get('/api/stream/:videoId', async (req, res) => {
     }
   }
 
-  const streamSettings = authDb.prepare('SELECT max_connections FROM admin_settings WHERE id = 1').get();
+  const streamSettings = await dbGet('SELECT max_connections FROM admin_settings WHERE id = 1');
   const maxStreams = streamSettings?.max_connections ?? MAX_CONCURRENT_STREAMS;
   if (activeStreamSet.size >= maxStreams) {
     return res.status(503).json({ error: 'Server is busy, please try again later.' });
@@ -3530,7 +3502,7 @@ app.get('/api/stream/:videoId', async (req, res) => {
   const cleanup = () => { if (!streamCleaned) { streamCleaned = true; activeStreamSet.delete(streamId); } };
 
   // Bandwidth accounting for stream route
-  const _sBwUser = getSessionUser(req.cookies?.session);
+  const _sBwUser = await getSessionUser(req.cookies?.session);
   const _sBwUid = _sBwUser?.id ?? null;
   const _sOrigWrite = res.write.bind(res);
   const _sOrigEnd = res.end.bind(res);
@@ -4477,9 +4449,10 @@ app.get('/api/shorts', async (req, res) => {
 app.get('/api/shorts/personalized', requireAuth, async (req, res) => {
   try {
     // Get recent channel IDs from watch history (last 30 entries, distinct channels)
-    const historyRows = authDb.prepare(
-      'SELECT DISTINCT channel_id FROM watch_history WHERE user_id = ? AND channel_id != "" ORDER BY watched_at DESC LIMIT 30'
-    ).all(req.user.id);
+    const historyRows = await dbAll(
+      'SELECT DISTINCT channel_id FROM watch_history WHERE user_id = ? AND channel_id != "" ORDER BY watched_at DESC LIMIT 30',
+      [req.user.id]
+    );
 
     const channelIds = historyRows.map(r => r.channel_id).filter(Boolean);
 
@@ -4587,7 +4560,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 const wss = new WebSocketServer({ server });
 const wsClients = new Map(); // videoId -> Set of clients
 
-wss.on('connection', (ws, req) => {
+wss.on('connection', async (ws, req) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const videoId = url.searchParams.get('v');
   const isAdmin = url.searchParams.get('admin') === '1';
@@ -4598,12 +4571,12 @@ wss.on('connection', (ws, req) => {
     const [k, ...v] = part.trim().split('=');
     if (k) wsCookies[k.trim()] = decodeURIComponent(v.join('='));
   });
-  const wsUser = !isAdmin ? getSessionUser(wsCookies.session) : null;
+  const wsUser = !isAdmin ? await getSessionUser(wsCookies.session) : null;
 
   if (isAdmin) {
     adminWsClients.add(ws);
     // Send current watching state immediately on connect
-    const cfg = authDb.prepare('SELECT allow_co_watch FROM admin_settings WHERE id = 1').get();
+    const cfg = await dbGet('SELECT allow_co_watch FROM admin_settings WHERE id = 1');
     if (cfg?.allow_co_watch) {
       const now = Date.now();
       const active = [];
