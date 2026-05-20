@@ -24,7 +24,18 @@ const sharedVideoId = sharedQS.get('v');
 const sharedPlatform = sharedQS.get('p') || 'youtube'; // 'youtube' | 'bilibili' | 'twitch'
 
 function App() {
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : true; // dark by default
+  });
+
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const next = !prev;
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+      return next;
+    });
+  };
   const [user, setUser] = useState(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -152,7 +163,7 @@ function App() {
       <div className={darkMode ? 'dark' : ''}>
         <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
           <div className="absolute top-4 right-4">
-            <button onClick={() => setDarkMode(!darkMode)} className="p-2 hover:bg-[var(--bg-secondary)] rounded transition-colors">
+            <button onClick={toggleDarkMode} className="p-2 hover:bg-[var(--bg-secondary)] rounded transition-colors">
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
@@ -303,7 +314,7 @@ function App() {
             <button onClick={handleLogout} className="p-2 hover:bg-[var(--bg-primary)] rounded transition-colors" title="Logout">
               <LogOut size={16} />
             </button>
-            <button onClick={() => setDarkMode(!darkMode)} className="p-2 hover:bg-[var(--bg-primary)] rounded transition-colors">
+            <button onClick={toggleDarkMode} className="p-2 hover:bg-[var(--bg-primary)] rounded transition-colors" title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>

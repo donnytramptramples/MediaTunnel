@@ -187,6 +187,7 @@ function DownloadPanel({ video, quality, availableHeights, onClose }) {
       format: selFormat,
       quality: fmt?.hasQuality ? selQuality : undefined,
       title: video.title || 'video',
+      channel: video.channel || '',
       bitrate: fmt?.hasBitrate ? selBitrate : undefined,
       compression: fmt?.hasCompression ? selCompression : undefined,
     });
@@ -457,10 +458,9 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
         setIsLoading(true);
         if (proxySeekDebounceRef.current) clearTimeout(proxySeekDebounceRef.current);
         const seekId = ++seekIdRef.current;
-        // Tight debounce — just enough to coalesce a rapid double-click on the
-        // bar without making a single click feel sluggish. Combined with the
-        // server-side fast-probe ffmpeg flags, this gets time-to-first-frame
-        // after an out-of-buffer seek down to ~half a second.
+        // Zero-delay: call restartFrom on the next tick so any synchronous
+        // state (seekPendingRef, seekReloadRef) finishes settling first.
+        // seekIdRef already handles superseded seeks (newer id → old aborted).
         proxySeekDebounceRef.current = setTimeout(() => {
           proxySeekDebounceRef.current = null;
           if (seekIdRef.current !== seekId) return;
@@ -471,7 +471,7 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
           });
           reportWatchingRef.current?.();
           wsSendRef.current?.();
-        }, 50);
+        }, 0);
       }
       return;
     }
@@ -940,6 +940,7 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
     let initRetryId   = null;
     let lastSeekAt    = 0;
     let lastVideoId   = null; // track video changes
+    let adjustCount   = 0;   // count of rate-based sync adjustments in current session
 
     // Load-ahead: persisted in localStorage so each session improves on the last.
     // We only ever seek ONCE on join — all catch-up after that is via playback rate.
@@ -1232,7 +1233,11 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
     };
 
     const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
+    // Reset wasPlayingRef on manual pause so onCanPlay never auto-resumes a
+    // video the user intentionally paused (e.g., during a buffering stall).
+    // seekTo() overwrites wasPlayingRef immediately before any seek anyway,
+    // so this doesn't interfere with seek-induced pauses.
+    const onPause = () => { setPlaying(false); wasPlayingRef.current = false; };
     const onWaiting = () => setIsLoading(true);
     const onCanPlay = () => {
       setIsLoading(false);
@@ -1372,6 +1377,11 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
 
   const onProgressMouseDown = (e) => {
     e.preventDefault();
+    // Capture the pointer so pointermove/pointerup keep firing even if
+    // the finger slides off the bar (critical for reliable touch scrubbing).
+    if (e.currentTarget.setPointerCapture) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    }
     setDraggingProgress(true);
     const ratio = getProgressRatio(e);
     setCurrentTime(ratio * duration);
@@ -1427,22 +1437,20 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
     const onUp = (e) => {
       const t = getProgressRatio(e) * duration;
       setDraggingProgress(false);
-      // Restore the pre-drag play intent so seekTo / canplay knows whether
-      // to resume after the seek completes.
-      wasPlayingRef.current = wasPlayingAtDragStart;
       seekTo(t);
-      // The in-buffer path of seekTo doesn't call play(), but we explicitly
-      // paused the element on drag-start, so if the user was playing before
-      // we need to resume here. The out-of-buffer path resumes via the
-      // canplay handler once the new fetch produces enough data, so this
-      // play() is safe in both cases (no-op if already playing).
+      // Restore play intent AFTER seekTo — seekTo overwrites wasPlayingRef with
+      // !v.paused which is always false while dragging (we paused on drag-start).
+      // onCanPlay uses wasPlayingRef to decide whether to resume after an
+      // out-of-buffer fetch completes, so it must be set correctly here.
+      wasPlayingRef.current = wasPlayingAtDragStart;
       if (wasPlayingAtDragStart && v && v.paused) {
         v.play().catch(() => {});
       }
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    // Use pointer events so dragging works on both mouse and touch devices.
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
   }, [draggingProgress, duration, seekTo, getProgressRatio]);
 
   const toggleMute = () => { const v = videoRef.current; v.muted = !muted; setMuted(!muted); };
@@ -1593,25 +1601,25 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
 
         {serverBusy ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-5 px-8 py-7 rounded-2xl border border-[#3daee9]/25 bg-[#1a1d27] shadow-[0_8px_40px_rgba(0,0,0,0.7)] max-w-[280px] w-full mx-4">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#3daee9]/10 border border-[#3daee9]/30">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3daee9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <div className="flex flex-col items-center gap-5 px-8 py-7 rounded-2xl border border-[var(--accent)]/25 bg-[var(--bg-secondary)] shadow-[0_8px_40px_rgba(0,0,0,0.4)] max-w-[280px] w-full mx-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[var(--accent)]/10 border border-[var(--accent)]/30">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="3" width="20" height="14" rx="2"/>
                   <path d="M8 21h8M12 17v4"/>
                   <path d="M12 8v3M12 14h.01" stroke="#f39c12" strokeWidth="2"/>
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-[#3daee9] text-base font-semibold tracking-wide">Server Limit Reached</p>
+                <p className="text-[var(--accent)] text-base font-semibold tracking-wide">Server Limit Reached</p>
                 {serverBusyInfo && (
-                  <p className="text-[#8b9bb4] text-sm mt-1.5">
+                  <p className="text-[var(--text-secondary)] text-sm mt-1.5">
                     {serverBusyInfo.current} / {serverBusyInfo.max} streams in use
                   </p>
                 )}
-                <p className="text-[#556070] text-xs mt-2 leading-relaxed">All stream slots are occupied.<br/>Wait for one to free up, then retry.</p>
+                <p className="text-[var(--text-secondary)] text-xs mt-2 leading-relaxed">All stream slots are occupied.<br/>Wait for one to free up, then retry.</p>
               </div>
               <button
-                className="w-full py-2 rounded-lg bg-[#3daee9]/15 border border-[#3daee9]/35 text-[#3daee9] text-sm font-medium hover:bg-[#3daee9]/25 hover:border-[#3daee9]/55 transition-colors"
+                className="w-full py-2 rounded-lg bg-[var(--accent)]/15 border border-[var(--accent)]/35 text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent)]/25 hover:border-[var(--accent)]/55 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   fetch('/api/stream/available', { credentials: 'include' })
@@ -1637,7 +1645,7 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
               >Retry</button>
             </div>
           </div>
-        ) : (isLoading || formatsLoading || !proxyUrl) && (
+        ) : (isLoading || formatsLoading || (!proxyUrl && !mseUrl)) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 pointer-events-none gap-4">
             <Loader2 size={56} className="text-[var(--accent)] animate-spin" />
             <div className="text-center">
@@ -1700,7 +1708,7 @@ export default function VideoPlayer({ video, user, onBack, onChannelSelect, coWa
                 ref={progressRef}
                 className="relative h-1.5 rounded-full bg-white/25 cursor-pointer group/bar"
                 style={{ touchAction: 'none' }}
-                onMouseDown={onProgressMouseDown}
+                onPointerDown={onProgressMouseDown}
                 onMouseMove={(e) => {
                   if (!duration || !progressRef.current) return;
                   const rect = progressRef.current.getBoundingClientRect();

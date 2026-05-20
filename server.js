@@ -3300,7 +3300,7 @@ app.get('/api/proxy/:videoId', async (req, res) => {
   req.on('close', () => controller.abort());
 
   // ── Concurrent stream limit (admins bypass) ────────────────────────────────
-  const _proxyIsAdmin = !!getAdminSession(req.cookies?.admin_token);
+  const _proxyIsAdmin = !!(await getAdminSession(req.cookies?.admin_token));
   const _proxyStreamId = Math.random().toString(36).slice(2) + Date.now().toString(36);
   // Key for per-user deduplication: authenticated user ID or fallback to IP.
   // This lets the same user seek (which opens a new connection) without burning an extra slot.
@@ -3665,15 +3665,15 @@ function sanitizeFilenameForHeader(filename) {
 
   let sanitized = filename
     .replace(/[\x00-\x1F\x7F]/g, '')
-    .replace(/[<>:"/\\|?*]/g, '_')
-    .replace(/[^\x20-\x7E]/g, '_')
-    .replace(/\s+/g, '_')
+    .replace(/[<>:"/\\|?*]/g, '')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 
-  sanitized = sanitized.replace(/^[._]+|[._]+$/g, '');
+  sanitized = sanitized.replace(/^[. ]+|[. ]+$/g, '');
 
-  if (sanitized.length > 100) {
-    sanitized = sanitized.substring(0, 100);
+  if (sanitized.length > 150) {
+    sanitized = sanitized.substring(0, 150).trim();
   }
 
   if (!sanitized) {
@@ -3845,19 +3845,24 @@ function cleanupJob(jobId) {
 
 // Phase 1 – start a job and return immediately
 app.post('/api/download/start', async (req, res) => {
-  const { videoId, format = 'mp4', quality = '720', title: titleParam, bitrate, compression } = req.query;
+  const { videoId, format = 'mp4', quality = '720', title: titleParam, channel: channelParam, bitrate, compression } = req.query;
   if (!videoId) return res.status(400).json({ error: 'videoId required' });
 
   const jobId = crypto.randomBytes(10).toString('hex');
   const formatConfig = getDownloadFormatConfig(format, bitrate, compression);
   const tempPath = path.join(os.tmpdir(), `ytdl_${jobId}.${formatConfig.ext}`);
 
+  const initialTitle = channelParam && titleParam
+    ? `${channelParam} - ${titleParam}`
+    : (titleParam || 'video');
+
   const job = {
     status: 'preparing',
     tempPath,
     ext: formatConfig.ext,
     mime: formatConfig.mime,
-    title: titleParam || `video_${videoId}`,
+    title: initialTitle,
+    channel: channelParam || '',
     estimatedSize: null,
     finalSize: null,
     error: null,
@@ -3898,7 +3903,11 @@ app.post('/api/download/start', async (req, res) => {
       }
 
       const { formats: ytFmts, meta } = data;
-      if (meta?.title) job.title = meta.title;
+      if (meta?.title) {
+        job.title = job.channel
+          ? `${job.channel} - ${meta.title}`
+          : meta.title;
+      }
 
       const qualityNum = parseInt(quality, 10);
 

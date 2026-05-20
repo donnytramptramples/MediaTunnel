@@ -125,9 +125,12 @@ export function DownloadProvider({ children }) {
     setDownloads(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
   }, []);
 
-  const startDownload = useCallback(async ({ videoId, format, quality, title, bitrate, compression }) => {
+  const startDownload = useCallback(async ({ videoId, format, quality, title, channel, bitrate, compression }) => {
     const id = ++idRef.current;
-    const filename = `${(title || 'video').replace(/[<>:"/\\|?*]/g, '')}.${format || 'mp4'}`;
+    const rawName = channel
+      ? `${channel} - ${title || 'video'}`
+      : (title || 'video');
+    const filename = `${rawName.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').replace(/\.+$/, '').trim()}.${format || 'mp4'}`;
 
     setDownloads(prev => [
       ...prev,
@@ -138,6 +141,7 @@ export function DownloadProvider({ children }) {
       // ── Phase 1: start job on server (returns immediately) ───────────────
       const params = new URLSearchParams({ videoId, format: format || 'mp4', quality: quality || '720' });
       if (title) params.set('title', title);
+      if (channel) params.set('channel', channel);
       if (bitrate) params.set('bitrate', bitrate);
       if (compression) params.set('compression', compression);
 
